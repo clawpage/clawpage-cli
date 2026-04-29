@@ -1,0 +1,40 @@
+{
+  "name": "@clawpage.ai/cli",
+  "version": "0.1.0",
+  "description": "Clawpage publish toolkit — turn page projects into hosted URLs. Companion CLI for the clawpage skill/plugin (Claude Code, Codex, Gemini).",
+  "type": "module",
+  "bin": {
+    "clawpage": "bin/clawpage.mjs"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "templates/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "homepage": "https://clawpage.ai",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/clawpage/clawpage-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/clawpage/clawpage-cli/issues"
+  },
+  "keywords": [
+    "clawpage",
+    "publish",
+    "cli",
+    "claude-code",
+    "skill",
+    "plugin",
+    "generative-ui"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

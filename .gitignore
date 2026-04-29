@@ -1,0 +1,12 @@
+node_modules/
+*.log
+npm-debug.log*
+.npmrc
+.DS_Store
+.vscode/
+.idea/
+keys.local.json
+.env
+.env.*
+!.env.example
+*.tgz
