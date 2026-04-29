@@ -1,6 +1,6 @@
 {
   "name": "@clawpage.ai/cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Clawpage publish toolkit — turn page projects into hosted URLs. Companion CLI for the clawpage skill/plugin (Claude Code, Codex, Gemini).",
   "type": "module",
   "bin": {
