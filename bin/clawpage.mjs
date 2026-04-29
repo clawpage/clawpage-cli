@@ -13,6 +13,7 @@ const SUBCOMMANDS = {
   links: "links.mjs",
   stats: "stats.mjs",
   scaffold: "scaffold.mjs",
+  blobs: "blobs.mjs",
 };
 
 function printHelp() {
@@ -25,6 +26,7 @@ Subcommands:
   data       Manage page data (analytics / metadata)
   links      Manage page links
   stats      Show usage statistics
+  blobs      Upload / list / delete blobs (Cloudflare R2 storage)
 
 Run 'clawpage <subcommand> --help' for subcommand-specific options.
 Docs: https://clawpage.ai
