@@ -1,6 +1,6 @@
 {
   "name": "@clawpage.ai/cli",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Generative UI hosting CLI — publish single-file HTML pages from Claude Code, Codex, or Gemini CLI to a hosted URL. Runtime for the clawpage skill / plugin. Manages pages, short links, KV data tables, blob storage (R2), and view stats.",
   "type": "module",
   "bin": {
