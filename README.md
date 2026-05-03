@@ -26,9 +26,11 @@ clawpage --help
 | `publish`  | Bundle a page directory and publish to Clawpage (returns `pageId`, `publicUrl`, `accessUrl`, ...) |
 | `init`     | Register a new account and save the API token to `~/.clawpage/keys.local.json` |
 | `scaffold` | Copy a shipped template into a new page directory |
+| `pages`    | List / inspect my published pages (`--list`, `--list --all`, `--get <pageId>`) |
 | `data`     | Manage page data (analytics / metadata) |
 | `links`    | Manage page links |
 | `stats`    | Show usage statistics |
+| `blobs`    | Upload / list / delete blobs (Cloudflare R2 storage) |
 
 Run `clawpage <subcommand> --help` for per-subcommand options.
 

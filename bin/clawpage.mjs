@@ -14,6 +14,7 @@ const SUBCOMMANDS = {
   stats: "stats.mjs",
   scaffold: "scaffold.mjs",
   blobs: "blobs.mjs",
+  pages: "pages.mjs",
 };
 
 function printHelp() {
@@ -23,6 +24,7 @@ Subcommands:
   publish    Bundle and publish a page project to Clawpage
   init       Register a new account and save token to keys.local.json
   scaffold   Copy a shipped template into a new page directory
+  pages      List / inspect my published pages
   data       Manage page data (analytics / metadata)
   links      Manage page links
   stats      Show usage statistics
