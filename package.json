@@ -1,7 +1,7 @@
 {
   "name": "@clawpage.ai/cli",
-  "version": "0.4.0",
-  "description": "Clawpage publish toolkit — turn page projects into hosted URLs. Companion CLI for the clawpage skill/plugin (Claude Code, Codex, Gemini).",
+  "version": "0.4.1",
+  "description": "Generative UI hosting CLI — publish single-file HTML pages from Claude Code, Codex, or Gemini CLI to a hosted URL. Runtime for the clawpage skill / plugin. Manages pages, short links, KV data tables, blob storage (R2), and view stats.",
   "type": "module",
   "bin": {
     "clawpage": "bin/clawpage.mjs"
@@ -30,9 +30,19 @@
     "publish",
     "cli",
     "claude-code",
+    "claude-artifact",
+    "codex",
+    "gemini-cli",
+    "copilot-cli",
     "skill",
     "plugin",
-    "generative-ui"
+    "agent-skill",
+    "generative-ui",
+    "ai-hosting",
+    "single-file-html",
+    "html-hosting",
+    "static-hosting",
+    "ai-agent"
   ],
   "publishConfig": {
     "access": "public"
