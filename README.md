@@ -26,7 +26,7 @@ clawpage --help
 | `publish`  | Bundle a page directory and publish to Clawpage (returns `pageId`, `publicUrl`, `accessUrl`, ...) |
 | `init`     | Register a new account and save the API token to `~/.clawpage/keys.local.json` |
 | `scaffold` | Copy a shipped template into a new page directory |
-| `pages`    | List / inspect my published pages (`--list`, `--list --all`, `--get <pageId>`) |
+| `pages`    | List / inspect / delete my published pages (`--list`, `--list --all`, `--get <pageId>`, `--delete <pageId> --yes`) |
 | `data`     | Manage page data (analytics / metadata) |
 | `links`    | Manage page links |
 | `stats`    | Show usage statistics |
