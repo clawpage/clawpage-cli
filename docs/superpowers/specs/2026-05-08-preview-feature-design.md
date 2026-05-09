@@ -114,7 +114,7 @@ exported (no body change) so `preview.mjs` can call them on publish-click.
 |--------------------------------|---------------|--------------------------------------|------------------------------|
 | `GET /`                        | query `?t=`   | —                                    | 200 text/html (re-bundles)   |
 | `GET /__preview__/overlay.js`  | query `?t=`   | —                                    | 200 application/javascript   |
-| `GET /__preview__/events`      | header        | —                                    | 200 text/event-stream (SSE)  |
+| `GET /__preview__/events`      | query `?t=`   | —                                    | 200 text/event-stream (SSE)  |
 | `POST /__preview__/chat`       | header        | `{message:string, toolsMode:"scoped"\|"full"}` | 202 `{requestId}` |
 | `POST /__preview__/chat/cancel`| header        | `{requestId}`                        | 200 `{ok:true}`              |
 | `POST /__preview__/publish`    | header        | empty (args locked at startup)       | 202 `{ok:true}`              |
@@ -253,8 +253,11 @@ The append always includes:
 > `metadata.page_id`). Edit the appropriate file(s), then explain what you
 > changed in 1–3 sentences. Keep edits minimal and focused on the user's
 > request.
->
-> [If design-guidelines.md was found, append its contents.]
+
+If `design-guidelines.md` was discovered, its full contents are appended after
+the paragraph above (verbatim, no truncation). The discovered/fallback choice
+is logged once at server startup so the user can debug why design rules look
+inconsistent.
 
 ### 7.3 Stream-json line parser
 
@@ -472,7 +475,7 @@ on npm — verify before merging."
 
 | # | Decision                                               | Source       |
 |---|--------------------------------------------------------|--------------|
-| 1 | Preview default in both create-page and update-page; skill asks first | user (Q1) |
+| 1 | Preview supported in both create-page and update-page; skill asks user "preview before publishing?" each run rather than gating via a CLI flag | user (Q1) |
 | 2 | One-shot lifecycle; server exits on publish or abort   | user (Q2)    |
 | 3 | Continued claude session across messages (`--resume`)  | user (Q3)    |
 | 4 | Streamed events in chat overlay (stream-json)          | user (Q4)    |
