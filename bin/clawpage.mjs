@@ -8,6 +8,7 @@ const libDir = path.resolve(__dirname, "..", "lib");
 
 const SUBCOMMANDS = {
   publish: "publish.mjs",
+  preview: "preview.mjs",
   init: "init.mjs",
   data: "data.mjs",
   links: "links.mjs",
@@ -22,6 +23,7 @@ function printHelp() {
 
 Subcommands:
   publish    Bundle and publish a page project to Clawpage
+  preview    Open a local preview, refine via chat, then publish
   init       Register a new account and save token to keys.local.json
   scaffold   Copy a shipped template into a new page directory
   pages      List / inspect / delete my published pages
