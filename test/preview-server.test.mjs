@@ -291,3 +291,21 @@ test("overlay.js contains FAB rendering and shadow root setup", async () => {
   assert.match(r.body, /window\.__CLAWPAGE_PREVIEW__/);
   await server.close();
 });
+
+test("overlay.js contains chat panel, transcript, settings cog, tools toggle markup", async () => {
+  const pageDir = tmpPageDir();
+  const server = await startPreviewServer({ pageDir, mode: "create" });
+  const r = await fetchRaw(server.address.port, `/__preview__/overlay.js?t=${server.token}`);
+  for (const m of [
+    /id="chat-panel"/,
+    /id="transcript"/,
+    /id="cog"/,
+    /id="tools-flyout"/,
+    /value="scoped"/, /value="full"/,
+    /id="chat-input"/,
+    /id="send"/,
+  ]) {
+    assert.match(r.body, m, `missing ${m}`);
+  }
+  await server.close();
+});
