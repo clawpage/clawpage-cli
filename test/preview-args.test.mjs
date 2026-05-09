@@ -33,13 +33,32 @@ test("preview without --page-dir exits non-zero with PAGE_DIR_REQUIRED", async (
   assert.equal(j.errorCode, "PAGE_DIR_REQUIRED");
 });
 
-test("preview with missing claude binary exits PREVIEW_CLAUDE_NOT_FOUND", async () => {
+test("preview with missing claude binary continues in publish-only mode (warning printed, server starts)", async () => {
   const fs = await import("node:fs");
   const os = await import("node:os");
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "preview-args-"));
   fs.writeFileSync(path.join(dir, "index.html"), `<html><body>x</body></html>`);
-  const r = await run(["--page-dir", dir], { CLAWPAGE_PREVIEW_CLAUDE_BIN: "/nonexistent/claude-binary-xyz" });
-  assert.notEqual(r.code, 0);
-  const j = JSON.parse(r.out);
-  assert.equal(j.errorCode, "PREVIEW_CLAUDE_NOT_FOUND");
+
+  const child = spawn(process.execPath, [PREVIEW, "--page-dir", dir], {
+    env: { ...process.env, CLAWPAGE_PREVIEW_CLAUDE_BIN: "/nonexistent/claude-binary-xyz" },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let err = "";
+  child.stderr.on("data", (c) => err += c);
+
+  // Wait until the server prints its preview URL line (signal that it bound and is running),
+  // OR for up to 5s.
+  await new Promise((resolve) => {
+    const timer = setTimeout(resolve, 5000);
+    child.stderr.on("data", () => {
+      if (/\[clawpage preview\]\s+http:\/\/127\.0\.0\.1:/.test(err)) {
+        clearTimeout(timer); resolve();
+      }
+    });
+  });
+  child.kill("SIGINT");
+  await new Promise((r) => child.once("exit", r));
+
+  assert.match(err, /claude binary not detected/, "warning is printed when claude is missing");
+  assert.match(err, /\[clawpage preview\]\s+http:\/\/127\.0\.0\.1:/, "server still binds and prints URL");
 });
