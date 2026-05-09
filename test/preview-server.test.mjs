@@ -5,6 +5,7 @@ import path from "node:path";
 import os from "node:os";
 import http from "node:http";
 import { startPreviewServer } from "../lib/preview-server.mjs";
+import { connectSSE } from "./helpers/sse-client.mjs";
 
 function tmpPageDir() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "preview-test-"));
@@ -59,5 +60,33 @@ test("GET / re-bundles on each request", async () => {
   const after = await fetchRaw(server.address.port, `/?t=${server.token}`);
   assert.match(before.body, /<h1>Hi<\/h1>/);
   assert.match(after.body, /<h1>Bye<\/h1>/);
+  await server.close();
+});
+
+test("GET /__preview__/overlay.js?t= returns 200 with content-type js", async () => {
+  const pageDir = tmpPageDir();
+  const server = await startPreviewServer({ pageDir, mode: "create" });
+  const r = await fetchRaw(server.address.port, `/__preview__/overlay.js?t=${server.token}`);
+  assert.equal(r.status, 200);
+  assert.match(r.headers["content-type"], /application\/javascript/);
+  assert.match(r.body, /clawpage-preview/);
+  await server.close();
+});
+
+test("GET /__preview__/events with bad token returns 403", async () => {
+  const pageDir = tmpPageDir();
+  const server = await startPreviewServer({ pageDir, mode: "create" });
+  const r = await fetchRaw(server.address.port, `/__preview__/events?t=wrong`);
+  assert.equal(r.status, 403);
+  await server.close();
+});
+
+test("SSE channel emits keepalive within 1s of subscribing", async () => {
+  const pageDir = tmpPageDir();
+  const server = await startPreviewServer({ pageDir, mode: "create", keepaliveMs: 200 });
+  const sse = await connectSSE({ port: server.address.port, token: server.token });
+  const ev = await sse.waitFor((e) => e.event === "keepalive", { timeoutMs: 1000 });
+  assert.ok(ev.data.ts > 0);
+  sse.close();
   await server.close();
 });
