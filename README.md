@@ -31,6 +31,7 @@ clawpage --help
 | `links`    | Manage page links |
 | `stats`    | Show usage statistics |
 | `blobs`    | Upload / list / delete blobs (Cloudflare R2 storage) |
+| `preview`  | Local preview with chat-driven editing; publish from a floating button when ready. |
 
 Run `clawpage <subcommand> --help` for per-subcommand options.
 
