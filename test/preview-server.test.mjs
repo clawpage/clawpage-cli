@@ -159,3 +159,28 @@ test("Two concurrent POST /chat: second returns 409", async () => {
   await server.close();
   await first.catch(() => {});
 });
+
+test("POST /chat/cancel SIGTERMs the in-flight subprocess", async () => {
+  const pageDir = tmpPageDir();
+  const claudeBin = path.resolve("test/fixtures/fake-claude.mjs");
+  const server = await startPreviewServer({
+    pageDir, mode: "create",
+    claudeBinary: claudeBin, claudeEnv: { FAKE_CLAUDE_SCENARIO: "hang" },
+  });
+  const sse = await connectSSE({ port: server.address.port, token: server.token });
+  const headers = { "X-Preview-Token": server.token };
+
+  const r = await postJSON(server.address.port, "/__preview__/chat",
+    { message: "hi", toolsMode: "scoped" }, headers);
+  const reqId = r.body.requestId;
+
+  await sleep(200); // let claude get going
+  const c = await postJSON(server.address.port, "/__preview__/chat/cancel",
+    { requestId: reqId }, headers);
+  assert.equal(c.status, 200);
+
+  await sse.waitFor((e) => e.event === "chat_done" && e.data.ok === false
+                          && (e.data.error === "cancelled" || /signal/.test(String(e.data.error))));
+  sse.close();
+  await server.close();
+});
