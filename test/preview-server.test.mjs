@@ -280,3 +280,14 @@ test("GET / on missing index.html returns 500 and broadcasts bundle_error", asyn
   sse.close();
   await server.close();
 });
+
+test("overlay.js contains FAB rendering and shadow root setup", async () => {
+  const pageDir = tmpPageDir();
+  const server = await startPreviewServer({ pageDir, mode: "create" });
+  const r = await fetchRaw(server.address.port, `/__preview__/overlay.js?t=${server.token}`);
+  assert.match(r.body, /attachShadow\(\s*\{\s*mode:\s*["']closed["']/);
+  assert.match(r.body, /id="__clawpage_publish_fab__"|publish-fab/);
+  assert.match(r.body, /id="__clawpage_chat_fab__"|chat-fab/);
+  assert.match(r.body, /window\.__CLAWPAGE_PREVIEW__/);
+  await server.close();
+});
