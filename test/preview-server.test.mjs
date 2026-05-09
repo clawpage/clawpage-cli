@@ -49,7 +49,7 @@ test("GET /?t=<token> returns bundled+injected HTML", async () => {
   const r = await fetchRaw(server.address.port, `/?t=${server.token}`);
   assert.equal(r.status, 200);
   assert.match(r.body, /<h1>Hi<\/h1>/);
-  assert.match(r.body, /window\.__CLAWPAGE_PREVIEW__/);
+  assert.match(r.body, /\/__preview__\/overlay\.js\?t=/);
   await server.close();
 });
 
@@ -259,13 +259,16 @@ test("POST /publish on failure: publish_done {ok:false}, server stays up", async
   await server.close();
 });
 
-test("POST /quit triggers server.whenAborted", async () => {
+test("POST /quit triggers server.whenAborted (after 5s grace + no SSE reconnect)", async () => {
   const pageDir = tmpPageDir();
   const server = await startPreviewServer({ pageDir, mode: "create" });
   const headers = { "X-Preview-Token": server.token };
   await postJSON(server.address.port, "/__preview__/quit", {}, headers);
-  const reason = await server.whenAborted;
-  assert.equal(reason, "quit");
+  // Should NOT resolve immediately
+  let resolvedFast = false;
+  Promise.resolve(server.whenAborted).then(() => { resolvedFast = true; });
+  await sleep(200);
+  assert.equal(resolvedFast, false, "abort should respect 5s grace window");
   await server.close();
 });
 
@@ -288,7 +291,7 @@ test("overlay.js contains FAB rendering and shadow root setup", async () => {
   assert.match(r.body, /attachShadow\(\s*\{\s*mode:\s*["']closed["']/);
   assert.match(r.body, /id="__clawpage_publish_fab__"|publish-fab/);
   assert.match(r.body, /id="__clawpage_chat_fab__"|chat-fab/);
-  assert.match(r.body, /window\.__CLAWPAGE_PREVIEW__/);
+  assert.match(r.body, /"token":/);
   await server.close();
 });
 
@@ -315,7 +318,90 @@ test("POST /quit also accepts ?t= query param (beacon path)", async () => {
   const server = await startPreviewServer({ pageDir, mode: "create" });
   // No header — only query param.
   await postJSON(server.address.port, `/__preview__/quit?t=${server.token}`, {});
-  const reason = await server.whenAborted;
-  assert.equal(reason, "quit");
+  // Should NOT resolve immediately (5s grace window applies)
+  let resolvedFast = false;
+  Promise.resolve(server.whenAborted).then(() => { resolvedFast = true; });
+  await sleep(200);
+  assert.equal(resolvedFast, false, "abort should respect 5s grace window");
   await server.close();
+});
+
+test("/quit after publishLatched is a no-op (post-navigate beacon)", async () => {
+  const pageDir = tmpPageDir();
+  const server = await startPreviewServer({
+    pageDir, mode: "create",
+    publishHandler: async () => ({ ok: true, liveUrl: "https://x.test/p/1",
+      successPayload: { ok: true } }),
+  });
+  const headers = { "X-Preview-Token": server.token };
+
+  await postJSON(server.address.port, "/__preview__/publish", {}, headers);
+  await server.whenPublished;
+
+  await postJSON(server.address.port, "/__preview__/quit", {}, headers);
+  await sleep(100);
+  // whenAborted should NOT have resolved
+  let aborted = false;
+  Promise.resolve(server.whenAborted).then(() => { aborted = true; });
+  await sleep(100);
+  assert.equal(aborted, false);
+  await server.close();
+});
+
+test("overlay.js token is substituted into the IIFE, not on window", async () => {
+  const pageDir = tmpPageDir();
+  const server = await startPreviewServer({ pageDir, mode: "create" });
+  const r = await fetchRaw(server.address.port, `/__preview__/overlay.js?t=${server.token}`);
+  // Token IS in the served body (substituted), but as the cfg literal, not on window.
+  assert.match(r.body, new RegExp(`"token"\\s*:\\s*"${server.token}"`));
+  // The placeholder is gone after substitution.
+  assert.doesNotMatch(r.body, /__CLAWPAGE_PREVIEW_CONFIG__/);
+  // Crucially: no window assignment.
+  assert.doesNotMatch(r.body, /window\.__CLAWPAGE_PREVIEW__\s*=/);
+  await server.close();
+});
+
+test("After first chat succeeds, second chat uses --resume (verified via fake-claude inspecting its argv)", async () => {
+  const argvLog = path.join(os.tmpdir(), `claude-argv-${Date.now()}.log`);
+  const wrapPath = path.join(os.tmpdir(), `claude-wrap-${Date.now()}.mjs`);
+  const claudeBin = path.resolve("test/fixtures/fake-claude.mjs");
+  fs.writeFileSync(wrapPath, `#!/usr/bin/env node
+import fs from "node:fs";
+import { spawnSync } from "node:child_process";
+fs.appendFileSync(${JSON.stringify(argvLog)}, JSON.stringify(process.argv.slice(2)) + "\\n");
+const r = spawnSync(${JSON.stringify(claudeBin)}, process.argv.slice(2), { stdio: "inherit", env: process.env });
+process.exit(r.status ?? 1);
+`);
+  fs.chmodSync(wrapPath, 0o755);
+
+  const pageDir = tmpPageDir();
+  const server = await startPreviewServer({
+    pageDir, mode: "create",
+    claudeBinary: wrapPath,
+    claudeEnv: { FAKE_CLAUDE_SCENARIO: "edit-success" },
+  });
+  const sse = await connectSSE({ port: server.address.port, token: server.token });
+  const headers = { "X-Preview-Token": server.token };
+
+  // First chat — should use --session-id
+  const r1 = await postJSON(server.address.port, "/__preview__/chat",
+    { message: "msg 1", toolsMode: "scoped" }, headers);
+  const reqId1 = r1.body.requestId;
+  await sse.waitFor((e) => e.event === "chat_done" && e.data.requestId === reqId1, { timeoutMs: 5000 });
+
+  // Second chat — should use --resume (because system/init in first chat flipped isFirstChat)
+  const r2 = await postJSON(server.address.port, "/__preview__/chat",
+    { message: "msg 2", toolsMode: "scoped" }, headers);
+  const reqId2 = r2.body.requestId;
+  await sse.waitFor((e) => e.event === "chat_done" && e.data.requestId === reqId2, { timeoutMs: 5000 });
+
+  const lines = fs.readFileSync(argvLog, "utf8").trim().split("\n").map(JSON.parse);
+  assert.equal(lines.length, 2);
+  assert.ok(lines[0].includes("--session-id"), "first chat should use --session-id");
+  assert.ok(lines[1].includes("--resume"), "second chat should use --resume");
+
+  sse.close();
+  await server.close();
+  fs.unlinkSync(wrapPath);
+  fs.unlinkSync(argvLog);
 });
