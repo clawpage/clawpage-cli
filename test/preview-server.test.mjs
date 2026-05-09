@@ -309,3 +309,13 @@ test("overlay.js contains chat panel, transcript, settings cog, tools toggle mar
   }
   await server.close();
 });
+
+test("POST /quit also accepts ?t= query param (beacon path)", async () => {
+  const pageDir = tmpPageDir();
+  const server = await startPreviewServer({ pageDir, mode: "create" });
+  // No header — only query param.
+  await postJSON(server.address.port, `/__preview__/quit?t=${server.token}`, {});
+  const reason = await server.whenAborted;
+  assert.equal(reason, "quit");
+  await server.close();
+});
