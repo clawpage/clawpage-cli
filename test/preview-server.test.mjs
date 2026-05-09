@@ -204,3 +204,67 @@ test("Chat hangs >timeout: subprocess killed, chat_done emits timeout", async ()
   sse.close();
   await server.close();
 });
+
+test("POST /publish calls publish handler, broadcasts publish_done + navigate, resolves whenPublished", async () => {
+  const pageDir = tmpPageDir();
+  const calls = [];
+  const server = await startPreviewServer({
+    pageDir, mode: "create",
+    publishHandler: async () => {
+      calls.push("publish");
+      return { ok: true, liveUrl: "https://example.test/p/abc",
+        successPayload: { ok: true, mode: "created", pageId: "p_abc", url: "https://example.test/p/abc" } };
+    },
+  });
+  const sse = await connectSSE({ port: server.address.port, token: server.token });
+  const headers = { "X-Preview-Token": server.token };
+
+  const r = await postJSON(server.address.port, "/__preview__/publish", {}, headers);
+  assert.equal(r.status, 202);
+
+  await sse.waitFor((e) => e.event === "publish_started");
+  await sse.waitFor((e) => e.event === "publish_done" && e.data.ok === true);
+  await sse.waitFor((e) => e.event === "navigate" && e.data.url === "https://example.test/p/abc");
+
+  const result = await server.whenPublished;
+  assert.deepEqual(result.successPayload, { ok: true, mode: "created", pageId: "p_abc", url: "https://example.test/p/abc" });
+
+  assert.deepEqual(calls, ["publish"]);
+  sse.close();
+  await server.close();
+});
+
+test("POST /publish on failure: publish_done {ok:false}, server stays up", async () => {
+  const pageDir = tmpPageDir();
+  const server = await startPreviewServer({
+    pageDir, mode: "create",
+    publishHandler: async () => ({ ok: false, errorCode: "UNAUTHORIZED",
+      errorMessage: "bad token", failurePayload: { ok: false, errorCode: "UNAUTHORIZED" } }),
+  });
+  const sse = await connectSSE({ port: server.address.port, token: server.token });
+  const headers = { "X-Preview-Token": server.token };
+
+  await postJSON(server.address.port, "/__preview__/publish", {}, headers);
+  const ev = await sse.waitFor((e) => e.event === "publish_done");
+  assert.equal(ev.data.ok, false);
+  assert.equal(ev.data.errorCode, "UNAUTHORIZED");
+
+  // server.whenPublished must NOT have resolved
+  let resolved = false;
+  Promise.resolve(server.whenPublished).then(() => resolved = true);
+  await sleep(100);
+  assert.equal(resolved, false);
+
+  sse.close();
+  await server.close();
+});
+
+test("POST /quit triggers server.whenAborted", async () => {
+  const pageDir = tmpPageDir();
+  const server = await startPreviewServer({ pageDir, mode: "create" });
+  const headers = { "X-Preview-Token": server.token };
+  await postJSON(server.address.port, "/__preview__/quit", {}, headers);
+  const reason = await server.whenAborted;
+  assert.equal(reason, "quit");
+  await server.close();
+});
