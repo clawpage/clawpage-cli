@@ -268,3 +268,15 @@ test("POST /quit triggers server.whenAborted", async () => {
   assert.equal(reason, "quit");
   await server.close();
 });
+
+test("GET / on missing index.html returns 500 and broadcasts bundle_error", async () => {
+  const pageDir = tmpPageDir();
+  fs.unlinkSync(path.join(pageDir, "index.html"));
+  const server = await startPreviewServer({ pageDir, mode: "create" });
+  const sse = await connectSSE({ port: server.address.port, token: server.token });
+  const r = await fetchRaw(server.address.port, `/?t=${server.token}`);
+  assert.equal(r.status, 500);
+  await sse.waitFor((e) => e.event === "bundle_error");
+  sse.close();
+  await server.close();
+});
