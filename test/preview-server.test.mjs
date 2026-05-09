@@ -184,3 +184,23 @@ test("POST /chat/cancel SIGTERMs the in-flight subprocess", async () => {
   sse.close();
   await server.close();
 });
+
+test("Chat hangs >timeout: subprocess killed, chat_done emits timeout", async () => {
+  const pageDir = tmpPageDir();
+  const claudeBin = path.resolve("test/fixtures/fake-claude.mjs");
+  const server = await startPreviewServer({
+    pageDir, mode: "create",
+    claudeBinary: claudeBin, claudeEnv: { FAKE_CLAUDE_SCENARIO: "hang" },
+    chatTimeoutMs: 300,
+  });
+  const sse = await connectSSE({ port: server.address.port, token: server.token });
+  const headers = { "X-Preview-Token": server.token };
+
+  await postJSON(server.address.port, "/__preview__/chat",
+    { message: "hi", toolsMode: "scoped" }, headers);
+  const ev = await sse.waitFor((e) => e.event === "chat_done", { timeoutMs: 3000 });
+  assert.equal(ev.data.ok, false);
+  assert.match(String(ev.data.error), /timeout|signal/i);
+  sse.close();
+  await server.close();
+});
